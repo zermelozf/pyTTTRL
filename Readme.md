@@ -9,4 +9,4 @@ Constructs a tree and solves it. Very slow.
 Learning the TTT game training a Neural Network with Reinforcement Learning.
 
 ## Dependency
-The TicTacToeWithNNandRL use the a MultiLayerPerceptron available at https://github.com/zermelozf/pyNeuralNet
+The TicTacToeWithNNandRL class use  MultiLayerPerceptron class available at https://github.com/zermelozf/pyNeuralNet
