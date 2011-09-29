@@ -6,9 +6,11 @@ Created on Nov 15, 2010
 
 from mlp import MultilayerPerceptron
 from numpy import exp, random, nonzero, c_, array, mean
-from pylab import ion, clf, plot, draw
+from pylab import ion, clf, plot, draw, savefig, title
 import cPickle
 from copy import copy
+from datetime import datetime
+
 
 class TTTPlayerTemplate:
     
@@ -68,7 +70,11 @@ class TTTPlayerTemplate:
         m = array([b[0:3].T[0],b[3:6].T[0],b[6:9].T[0]])
         print m 
 
-class UniformTTTPLayer(TTTPlayerTemplate):    
+class UniformTTTPLayer(TTTPlayerTemplate):
+    def __init__(self):
+        TTTPlayerTemplate.__init__(self)
+        self.name = "UniformTTTPLayer"  
+        
     def play(self,board,player):
         possible = self.possible(board,player)
         lp = len(possible)
@@ -79,6 +85,7 @@ class UniformTTTPLayer(TTTPlayerTemplate):
 class LookupTTTPlayer(TTTPlayerTemplate):
     def __init__(self):
         TTTPlayerTemplate.__init__(self)
+        self.name = "LookupTTTPlayer"
         self.lut = cPickle.load(open("../res/unikstates"))
         
     def play(self,board,player):
@@ -100,7 +107,10 @@ class LookupTTTPlayer(TTTPlayerTemplate):
                 return self.lut['values'][i]
   
 class HumanTTTPlayer(TTTPlayerTemplate):
-        
+    def __init__(self):
+        TTTPlayerTemplate.__init__(self)
+        self.name = "HumanTTTPlayer" 
+           
     def play(self,board,player):
         played = False
         while not played:
@@ -118,6 +128,9 @@ class NeuralTTTPlayerTemplate(TTTPlayerTemplate):
         self.nnodes = str(nnodes)     
     
 class GreedyNeuralTTTPlayer(NeuralTTTPlayerTemplate):
+    def __init__(self,nnodes):
+        NeuralTTTPlayerTemplate.__init__(self, nnodes)
+        self.name = "GreedyNeuralTTTPlayer " + self.nnodes
         
     def play(self,board,player):
         possible = self.possible(board,player)
@@ -128,7 +141,11 @@ class GreedyNeuralTTTPlayer(NeuralTTTPlayerTemplate):
             choice = possible[nonzero(Q==min(Q))[0]]
         return choice
 
-class SoftMaxNeuralTTTPlayer(NeuralTTTPlayerTemplate):    
+class SoftMaxNeuralTTTPlayer(NeuralTTTPlayerTemplate): 
+    def __init__(self,nnodes):
+        NeuralTTTPlayerTemplate.__init__(self, nnodes)
+        self.name = "SoftMaxNeuralTTTPlayer " + self.nnodes
+           
     def play(self,board,player,beta=10):
         possible = self.possible(board,player)
         Q = [self.V.process(c)[0][0] for c in possible]
@@ -193,6 +210,11 @@ class ReinforcementLearning:
         self.player2 = player2
         self.sampler = TTTSampler(player1, player2)
         self.anim = Animate()
+    
+    def setPlayers(self, player1, player2): 
+        self.player1 = player1
+        self.player2 = player2
+        self.anim = Animate()
            
     def MC_RL_player2(self,n):
         for k in range(0,n):
@@ -202,7 +224,7 @@ class ReinforcementLearning:
             for state in s:
                 self.player2.V.learn(state,value)
                 print state.T, value, self.player2.V.process(state).T
-            self.anim.anim(value)
+            self.anim.anim(self.player1.name + " VS "+ self.player2.name, value)
                     
     def TD_RL_player2(self, n):                
         for k in range(0,n):
@@ -213,9 +235,9 @@ class ReinforcementLearning:
                 o = self.player2.V.process(s[i])
                 n = self.player2.V.process(s[i+1])
                 value = o + 0.05*(n-o)
-                self.V.learn(s[i],value)
+                self.player2.V.learn(s[i],value)
                 print s[i].T, value, self.player2.V.process(s[i]).T
-            self.anim.anim(value)
+            self.anim.anim(self.player1.name + " VS "+ self.player2.name, value)
                 
     def MC_RL_player1(self,n):
         for k in range(0,n):
@@ -225,7 +247,7 @@ class ReinforcementLearning:
             for state in s:
                 self.player1.V.learn(state,value)
                 print state.T, value, self.player1.V.process(state).T
-            self.anim.anim(value)
+            self.anim.anim(self.player1.name + " VS "+ self.player2.name, value)
                     
     def TD_RL_player1(self, n):                
         for k in range(0,n):
@@ -236,9 +258,9 @@ class ReinforcementLearning:
                 o = self.player1.V.process(s[i])
                 n = self.player1.V.process(s[i+1])
                 value = o + 0.05*(n-o)
-                self.V.learn(s[i],value)
+                self.V.player1.learn(s[i],value)
                 print s[i].T, value, self.player1.V.process(s[i]).T
-            self.anim.anim(value)
+            self.anim.anim(self.player1.name + " VS "+ self.player2.name, value)
 
 class Animate: 
     def __init__(self):
@@ -246,18 +268,21 @@ class Animate:
         self.moyg = []
         ion()
         
-    def anim(self,value):
+    def anim(self,msg, value):
         self.game.append(value)
         clf()
-        if len(self.game)%500 == 0:
+        title(msg)
+        nb_samples = 500
+        if len(self.game)%nb_samples == 0:
             y = mean(self.game)
             self.game = []
             self.moyg.append(y)
-            x = range(0,500*len(self.moyg),500)            # x-array
+            x = range(0,nb_samples*len(self.moyg),nb_samples)            # x-array
             plot(x,self.moyg)
-            draw()
-#        if len(self.game)%100000 == 0:
-#            savefig('RLcurve'+type+self.nnodes)
+            #draw()
+        if len(self.game)%(20*nb_samples) == 0:
+            basename = '../res/'
+            savefig(basename + msg +".png")
 
 class PlayTTT:
     def __init__(self, player1, player2):
@@ -291,12 +316,26 @@ if __name__ == "__main__":
 #    game = PlayTTT(LookupTTTPlayer(), HumanTTTPlayer())
 #    game.play()
     
-    p1 = LookupTTTPlayer()
-    p2 = SoftMaxNeuralTTTPlayer([9,40,1])
+    plut = LookupTTTPlayer()
+    nodes = [9,36,18,1]
+    player2soft = SoftMaxNeuralTTTPlayer(nodes)
+    player1soft = SoftMaxNeuralTTTPlayer(nodes)
+    player2greedy = GreedyNeuralTTTPlayer(nodes)
     
-    rl = ReinforcementLearning(p1,p2)
-    rl.MC_RL_player2(100000)
+    rl = ReinforcementLearning(player1soft, plut)
+    rl.MC_RL_player1(20000)
     
+    rl.setPlayers(plut, player2soft)
+    rl.rl.MC_RL_player2(20000)
+    
+    rl.setPlayers(player1soft, player2soft)
+    rl.MC_RL_player2(20000)
+    
+    rl.setPlayers(player1soft, player2soft)
+    rl.MC_RL_player1(20000)
+    
+    player1soft.V.save("player1soft"+str(nodes))
+    player2soft.V.save("player2soft"+str(nodes))
 
     
 
