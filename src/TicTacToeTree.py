@@ -4,8 +4,8 @@ Created on Nov 2, 2010
 @author: arnaud
 '''
 
-from numpy import *
-from tree import *
+from numpy import array, nonzero, diag
+from tree import node, tree
 from time import time
 from copy import copy
 import cPickle

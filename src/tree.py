@@ -4,8 +4,7 @@ Created on Nov 2, 2010
 @author: arnaud
 '''
 
-from numpy import *
-import scipy as Sci
+from numpy import array, nonzero
     
 class node:
     def __init__(self):
@@ -15,7 +14,7 @@ class node:
         self.state = 0
         self.value = 0
         
-    def addchilds(self,nodes):
+    def addChild(self,nodes):
         self.child.extend(nodes)
         for n in nodes:
             n.parent.append(self)
